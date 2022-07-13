@@ -1,0 +1,217 @@
+/*要点1.利用gotoxy函数确定光标位置
+	  2.在光标处输出符号"*"
+	  3.利用getch从键盘输入WASD控制X,Y坐标运动
+	  4.在坐标X,Y处打印空格，就可以消尾迹
+	  5.由于getch()需要输入的时候才能继续运动，所以蛇头只有在按下WASD键的时候才会运动，否则静止
+	  6.利用非阻塞式函数kbhit来获取按键，使蛇能够在不按WASD时能保持原来方向移动     
+						  【以上就是蛇头的移动】
+	  7.控制有长度的蛇移动：利用数组将蛇身体的坐标装起来，按动WASD时装蛇头的数组发生改变，除了蛇尾和蛇头数组以外的蛇身体数组都整体向蛇头数组前进一位，蛇尾坐标需要消除
+	                      【 蛇身体的移动】
+*/
+
+#include<stdio.h>
+#include<tc.h>
+#include<math.h>
+
+
+#define speed 100  //蛇的移动速度，越小越快
+#define snakelen_MAX 100   //蛇的最大长度
+#define snakelen 1   //蛇的初始长度
+
+#define rangeX 99  //出现$的范围高
+#define rangeY 29  //出现$的范围宽
+#define percent1 2  //生成$"普通食物"的概率
+#define percent2 1   //生成#"炸弹"和$"超级食物"的概率
+
+int main()
+	{	
+	int x=50,y=20,dx=0,dy=0;      //x,y为蛇头部的坐标
+	int end=1;
+	char key='W';
+	int snakeX[snakelen_MAX],snakeY[snakelen_MAX];
+
+	int n=0,i,j,score=0,len=0;
+	int area[rangeY][rangeX]={0};//前面是高，后面是宽
+	int random;//随机数random(-90~32767)
+
+
+	gotoxy(104,1);           //在游戏旁边提示
+	printf("& 长度加1");
+	gotoxy(104,2);
+	printf("$ 长度加5");
+	gotoxy(103,3);
+	printf("(生长“#”旁边)");
+	gotoxy(104,4);
+	printf("# 游戏失败");
+
+	for(i=1;i<rangeY;i++)//i为宽         //画出蛇的食物
+	{
+		for(j=1;j<rangeX;j++)//j为高
+		{
+			random=(rand())%100+1;//random是[1~99]之间的某个数
+
+			if(random>(100-percent1))
+			{
+				area[i][j]=1;    //数值为1，为食物，会使蛇变
+				gotoxy(j,i);
+				printf("&");
+			}
+		}
+
+	}
+
+	for(i=1;i<rangeY;i++)//i为宽                  //画出陷阱和超级食物
+	{
+		for(j=1;j<rangeX;j++)//j为高
+		{
+			random=(rand())%100+1;//random是[1~99]之间的某个数
+
+			if(random>(100-percent2))
+			{
+				area[i][j]=2;    //数值为1，为食物，会使蛇变
+				area[i+1][j]=3;//数值为3，则为超级食物，会使蛇变大5个单位长度
+				gotoxy(j,i);
+				printf("#");
+				gotoxy(j,i+1);
+				printf("$");
+			}
+		}
+
+	}
+
+
+	for(x=1;x<101;x++)   //画上边界                         //画蛇的活动出边界
+	{					      //数值为0，为炸弹，会游戏结束
+		gotoxy(x,0);
+		printf("*");
+
+	}  
+	for(y=0;y<32;y++)  //画右边界
+	{
+		gotoxy(101,y);
+		printf("*");
+	}
+	for(x=1;x<101;x++)   //画下边界
+	{
+
+		gotoxy(x,31);
+		printf("*");
+	}
+	for(y=0;y<32;y++)  //左边界
+	{
+		gotoxy(0,y);
+		printf("*");
+	}
+
+
+
+
+	for(i=0;i<snakelen;i++)                //画出蛇头的初始位置
+	{
+		snakeX[i]=60+i;
+		snakeY[i]=20;
+		gotoxy(snakeX[i],snakeY[i]);
+		printf("@");
+	}
+
+	
+	while(end!=0)                               //游戏中蛇的变化
+		{	
+		
+			if(kbhit()==1)//获取按键  （非阻塞式函数，此函数有键盘按下返回值为1，没有则为0,当没有按下的时候，if里面的语句不会执行，key的值不变，坐标变化不变，蛇保持原来运动轨迹）
+				{
+				 key=getch();	//阻塞式函数
+				}
+		
+			gotoxy(snakeX[snakelen-1+len],snakeY[snakelen-1+len]);       
+			printf(" ");       //消除最后一个尾部
+					
+   			if(key=='A')
+			{
+				dx=-1;
+				dy=0;
+			}
+			if(key=='S')
+			{
+				dy=1;
+				dx=0;
+			}
+			if(key=='D')
+			{
+				dx=1;
+				dy=0;
+			}
+			if(key=='W')
+			{
+				dx=0;
+				dy=-1;
+			}
+
+			x+=dx;
+			y+=dy;
+
+			if(area[y][x]==1)
+				{
+					score++;                 //迟到普通食物"&",长度加1
+					gotoxy(104,0);
+					printf("score:%3d",score);
+					area[y][x]=0;
+					len+=1;
+				}
+			 if(area[y][x]==2)                  //吃到炸单"#",游戏结束
+				{
+					end=0;
+				}
+
+			 if(area[y][x]==3)
+				 {
+				score+=5;
+				gotoxy(104,0);
+				printf("score:%3d",score);   //吃到超市食物，长度加5；
+			    area[y][x]=0;
+				len+=5;
+				 }
+
+			
+
+				
+			for(i=snakelen-1+len;i>0;i--)     //身体左边整体向前移
+			{
+				snakeX[i]=snakeX[i-1];
+				snakeY[i]=snakeY[i-1];
+
+			}
+
+			if(y<1) y=30;     //出上边界
+			if(x<1)	x=100;		//出左边界
+			if(y>30) y=1;		//出下边界
+			if(x>100) x=1;     //出右边界
+
+			snakeX[0]=x;
+			snakeY[0]=y;   //头部的移动
+
+
+			for(i=0;i<snakelen+len;i++)                //画出蛇
+			{
+				gotoxy(snakeX[i],snakeY[i]);
+			
+				printf("@");
+			}
+
+			
+
+			delay(speed);   //控制蛇的移动速度
+
+			if(key=='P')	end=0;
+
+		}
+
+
+		gotoxy(45,15);
+		printf("GAME OVER!");
+			          
+
+		return 0;
+		getch();    //会等待你按下任意键,再继续执行下面的语句;(有时程序执行完出现闪退问题,可以用该语句避免)
+
+	}
